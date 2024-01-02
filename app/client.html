@@ -1,0 +1,55 @@
+<html>
+<script>
+  Promise.delay = time_ms => new Promise(resolve => setTimeout(resolve, time_ms));
+
+  async function main() {
+    const streamReader = async (stream, errorText, dataReceivedFunction) => {
+      try {
+        let reader = stream.getReader();
+        while (true) {
+          data = await reader.read();
+          if (data.done) {
+            break;
+          }
+          dataReceivedFunction(data.value);
+        }
+      } catch(error) {
+        console.log(errorText + ':', error);
+      }
+    };
+
+    // Text encoder and decoder
+    let encoder = new TextEncoder();
+    let decoder = new TextDecoder();
+
+    // Connect to WebTransport server
+    let transport = new WebTransport("https://localhost:4433/counter");
+    await transport.ready;
+
+    transport.closed
+      .then(() => console.log('Connection closed normally'))
+      .catch(error => console.log('Connection closed abruptly', error));
+
+    // Create datagram writer
+    let datagramWriter = transport.datagrams.writable.getWriter();
+
+    // Display incoming datagrams, data on bidi stream, and incoming bidi & uni streams (and data on those streams)
+    streamReader(transport.datagrams.readable, 'Datagram receive error', data => {
+        console.log('Received datagram:', decoder.decode(data));
+    });
+
+    // Send some data on the streams we've created, wait, then send some more
+    await datagramWriter.write(encoder.encode("Datagram"))
+
+    await Promise.delay(1000);
+
+    await datagramWriter.write(encoder.encode("Datagram again"))
+
+    await Promise.delay(1000);
+    
+    await transport.close();
+  }
+
+  main();
+</script>
+</html>
