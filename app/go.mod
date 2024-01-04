@@ -1,4 +1,4 @@
-module starling/webtransport-bridge
+module go-robotgame
 
 go 1.17
 

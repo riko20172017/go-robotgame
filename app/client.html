@@ -39,15 +39,15 @@
     });
 
     // Send some data on the streams we've created, wait, then send some more
-    await datagramWriter.write(encoder.encode("Datagram"))
+    // await datagramWriter.write(encoder.encode("Datagram"))
 
-    await Promise.delay(1000);
+    // await Promise.delay(1000);
 
-    await datagramWriter.write(encoder.encode("Datagram again"))
+    // await datagramWriter.write(encoder.encode("Datagram again"))
 
-    await Promise.delay(1000);
+    // await Promise.delay(1000);
     
-    await transport.close();
+    // await transport.close();
   }
 
   main();

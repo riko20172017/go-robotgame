@@ -8,36 +8,43 @@ import (
 	"net/http"
 	"time"
 
+	"go-robotgame/gameloop"
+
 	"github.com/adriancable/webtransport-go"
 )
 
-func handleWebTransportStreams(session *webtransport.Session) {
-	// Handle incoming datagrams
-	go func() {
-		for {
-			msg, err := session.ReceiveMessage(session.Context())
-			if err != nil {
-				fmt.Println("Session closed, ending datagram listener:", err)
-				break
-			}
-			fmt.Printf("Received datagram: %s\n", msg)
-
-			sendMsg := bytes.ToUpper(msg)
-			fmt.Printf("Sending datagram: %s\n", sendMsg)
-			session.SendMessage(sendMsg)
-		}
-	}()
-}
-
 func main() {
+	mychannel := make(chan *webtransport.Session)
+
 	http.HandleFunc("/counter", func(rw http.ResponseWriter, r *http.Request) {
 		session := r.Body.(*webtransport.Session)
 		session.AcceptSession()
+		mychannel <- session
 		// session.RejectSession(400)
 
 		fmt.Println("Accepted incoming WebTransport session")
-		handleWebTransportStreams(session)
+
+		go func() {
+			for {
+				msg, err := session.ReceiveMessage(session.Context())
+				if err != nil {
+					fmt.Println("Session closed, ending datagram listener:", err)
+					break
+				}
+				fmt.Printf("Received datagram: %s\n", msg)
+
+				sendMsg := bytes.ToUpper(msg)
+				fmt.Printf("Sending datagram: %s\n", sendMsg)
+				session.SendMessage(sendMsg)
+			}
+		}()
 	})
+
+	g := gameloop.New(time.Second/30, mychannel, func(delta float64) {
+		log.Println(delta)
+	})
+
+	g.Start()
 
 	// Note: "new-tab-page" in AllowedOrigins lets you access the server from a blank tab (via DevTools Console).
 	// "" in AllowedOrigins lets you access the server from JavaScript loaded from disk (i.e. via a file:// URL)
