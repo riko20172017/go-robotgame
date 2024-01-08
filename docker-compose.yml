@@ -1,11 +1,12 @@
 services:
   game:
-    build:
-      dockerfile: Dockerfile
-      context: .
-      target: dev
+    image: riko2018/go-robotgame-game
+    # build:
+    #   dockerfile: Dockerfile
+    #   context: .
+    #   target: dev
     ports:
-      - "4433:4433"
+      - "8000:8000"
       - "4433:4433/udp"
     environment:
       ENV: DEV

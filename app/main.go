@@ -13,9 +13,14 @@ import (
 	"github.com/adriancable/webtransport-go"
 )
 
+func check(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 	mychannel := make(chan *webtransport.Session)
-
 	http.HandleFunc("/counter", func(rw http.ResponseWriter, r *http.Request) {
 		session := r.Body.(*webtransport.Session)
 		session.AcceptSession()
@@ -40,8 +45,8 @@ func main() {
 		}()
 	})
 
-	g := gameloop.New(time.Second/30, mychannel, func(delta float64) {
-		log.Println(delta)
+	g := gameloop.New(time.Second/1, mychannel, func(delta float64) {
+		// log.Println(delta)
 	})
 
 	g.Start()

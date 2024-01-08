@@ -16,7 +16,13 @@ type GameLoop struct {
 	tickRate  time.Duration // tick interval
 	Quit      chan bool
 	myChannel chan *webtransport.Session // channel used for exiting the loop
-	sessions  []*webtransport.Session
+	entities  []Entity
+}
+
+type Entity struct {
+	x       float32
+	y       float32
+	session *webtransport.Session
 }
 
 // Create new game loop
@@ -26,7 +32,6 @@ func New(tickRate time.Duration, mychannel chan *webtransport.Session, onUpdate 
 		tickRate:  tickRate,
 		Quit:      make(chan bool),
 		myChannel: mychannel,
-		sessions:  []*webtransport.Session{},
 	}
 }
 
@@ -52,13 +57,11 @@ func (g *GameLoop) startLoop() {
 			delta = float64(now-start) / 1000000000
 			start = now
 			g.onUpdate(delta)
-			println(len(g.sessions))
-			i++
-			for _, s := range g.sessions {
-				s.SendMessage([]byte(fmt.Sprintf("%2d", i)))
+			for _, s := range g.entities {
+				s.session.SendMessage([]byte(fmt.Sprintf("%2d", i)))
 			}
 		case s := <-g.myChannel:
-			g.sessions = append(g.sessions, s)
+			g.entities = append(g.entities, Entity{x: 0.0, y: 0.0, session: s})
 
 		case <-g.Quit:
 			t.Stop()
