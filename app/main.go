@@ -20,11 +20,12 @@ func check(err error) {
 }
 
 func main() {
-	mychannel := make(chan *webtransport.Session)
+	connectionChannel := make(chan *webtransport.Session)
+	dataChannel := make(chan *webtransport.Session)
 	http.HandleFunc("/counter", func(rw http.ResponseWriter, r *http.Request) {
 		session := r.Body.(*webtransport.Session)
 		session.AcceptSession()
-		mychannel <- session
+		connectionChannel <- session
 		// session.RejectSession(400)
 
 		fmt.Println("Accepted incoming WebTransport session")
@@ -45,7 +46,7 @@ func main() {
 		}()
 	})
 
-	g := gameloop.New(time.Second/1, mychannel, func(delta float64) {
+	g := gameloop.New(time.Second/1, connectionChannel, func(delta float64) {
 		// log.Println(delta)
 	})
 

@@ -12,11 +12,11 @@ import (
 
 // GameLoop implements a simple game loop.
 type GameLoop struct {
-	onUpdate  func(float64) // update function called by loop
-	tickRate  time.Duration // tick interval
-	Quit      chan bool
-	myChannel chan *webtransport.Session // channel used for exiting the loop
-	entities  []Entity
+	onUpdate          func(float64) // update function called by loop
+	tickRate          time.Duration // tick interval
+	Quit              chan bool
+	connectionChannel chan *webtransport.Session // channel used for exiting the loop
+	entities          []Entity
 }
 
 type Entity struct {
@@ -26,12 +26,12 @@ type Entity struct {
 }
 
 // Create new game loop
-func New(tickRate time.Duration, mychannel chan *webtransport.Session, onUpdate func(float64)) *GameLoop {
+func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, onUpdate func(float64)) *GameLoop {
 	return &GameLoop{
-		onUpdate:  onUpdate,
-		tickRate:  tickRate,
-		Quit:      make(chan bool),
-		myChannel: mychannel,
+		onUpdate:          onUpdate,
+		tickRate:          tickRate,
+		Quit:              make(chan bool),
+		connectionChannel: connectionChannel,
 	}
 }
 
@@ -60,7 +60,7 @@ func (g *GameLoop) startLoop() {
 			for _, s := range g.entities {
 				s.session.SendMessage([]byte(fmt.Sprintf("%2d", i)))
 			}
-		case s := <-g.myChannel:
+		case s := <-g.connectionChannel:
 			g.entities = append(g.entities, Entity{x: 0.0, y: 0.0, session: s})
 
 		case <-g.Quit:
