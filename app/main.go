@@ -19,9 +19,14 @@ func check(err error) {
 	}
 }
 
+type Data struct {
+	x string
+	y string
+}
+
 func main() {
 	connectionChannel := make(chan *webtransport.Session)
-	dataChannel := make(chan *webtransport.Session)
+	dataChannel := make(chan Data)
 	http.HandleFunc("/counter", func(rw http.ResponseWriter, r *http.Request) {
 		session := r.Body.(*webtransport.Session)
 		session.AcceptSession()
@@ -41,6 +46,7 @@ func main() {
 
 				sendMsg := bytes.ToUpper(msg)
 				fmt.Printf("Sending datagram: %s\n", sendMsg)
+				dataChannel <- sendMsg
 				session.SendMessage(sendMsg)
 			}
 		}()
