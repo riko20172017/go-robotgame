@@ -26,7 +26,7 @@ type Data struct {
 
 func main() {
 	connectionChannel := make(chan *webtransport.Session)
-	dataChannel := make(chan Data)
+	dataChannel := make(chan []byte)
 	http.HandleFunc("/counter", func(rw http.ResponseWriter, r *http.Request) {
 		session := r.Body.(*webtransport.Session)
 		session.AcceptSession()
@@ -45,14 +45,14 @@ func main() {
 				fmt.Printf("Received datagram: %s\n", msg)
 
 				sendMsg := bytes.ToUpper(msg)
-				fmt.Printf("Sending datagram: %s\n", sendMsg)
+				// fmt.Printf("Sending datagram: %s\n", sendMsg)
 				dataChannel <- sendMsg
-				session.SendMessage(sendMsg)
+				// session.SendMessage(sendMsg)
 			}
 		}()
 	})
 
-	g := gameloop.New(time.Second/1, connectionChannel, func(delta float64) {
+	g := gameloop.New(time.Second/1, connectionChannel, dataChannel, func(delta float64) {
 		// log.Println(delta)
 	})
 
