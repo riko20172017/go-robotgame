@@ -42,7 +42,7 @@ func main() {
 					fmt.Println("Session closed, ending datagram listener:", err)
 					break
 				}
-				fmt.Printf("Received datagram: %s\n", msg)
+				// fmt.Printf("Received datagram: %s\n", msg)
 
 				sendMsg := bytes.ToUpper(msg)
 				// fmt.Printf("Sending datagram: %s\n", sendMsg)
@@ -64,7 +64,7 @@ func main() {
 		ListenAddr:     ":4433",
 		TLSCert:        webtransport.CertFile{Path: "localhost.pem"},
 		TLSKey:         webtransport.CertFile{Path: "localhost-key.pem"},
-		AllowedOrigins: []string{"googlechrome.github.io", "127.0.0.1:8000", "localhost:8000", "new-tab-page", ""},
+		AllowedOrigins: []string{"googlechrome.github.io", "127.0.0.1:8000", "localhost:8000", "localhost:4000", "new-tab-page", ""},
 		QuicConfig: &webtransport.QuicConfig{
 			KeepAlive:      true,
 			MaxIdleTimeout: 30 * time.Second,

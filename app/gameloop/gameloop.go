@@ -67,10 +67,11 @@ func (g *GameLoop) startLoop() {
 			}
 		case s := <-g.connectionChannel:
 			uid = uid + 1
-			g.entities[1] = Entity{uid: uid, x: 0.0, y: 0.0, session: s}
+			// g.entities[1] = Entity{uid: uid, x: 0.0, y: 0.0, session: s}
+			s.SendMessage([]byte(fmt.Sprintf("{\"command\": \"DISCOVER\",\"uid\": %d}", uid)))
 
 		case d := <-g.dataChannel:
-			println("Processed client data", d)
+			fmt.Printf("Processed client data: %s\n", d)
 
 		case <-g.Quit:
 			t.Stop()
