@@ -3,6 +3,7 @@
 package gameloop
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"time"
@@ -18,6 +19,7 @@ type GameLoop struct {
 	connectionChannel chan *webtransport.Session // channel used for exiting the loop
 	dataChannel       chan []byte
 	entities          map[int8]Entity
+	sessions          map[int8]Session
 }
 
 type Entity struct {
@@ -25,6 +27,19 @@ type Entity struct {
 	x       float32
 	y       float32
 	session *webtransport.Session
+}
+
+type Session struct {
+	session *webtransport.Session
+}
+
+type Command struct {
+	Type string `json:"type"`
+}
+
+type Req struct {
+	Type string `json:"type"`
+	Id   int    `json:"id"`
 }
 
 // Create new game loop
@@ -36,6 +51,7 @@ func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, d
 		connectionChannel: connectionChannel,
 		dataChannel:       dataChannel,
 		entities:          make(map[int8]Entity),
+		sessions:          make(map[int8]Session),
 	}
 }
 
@@ -64,14 +80,27 @@ func (g *GameLoop) startLoop() {
 			g.onUpdate(delta)
 			for _, s := range g.entities {
 				s.session.SendMessage([]byte(fmt.Sprintf("%2d", i)))
+				// println(len(g.entities))
+
 			}
 		case s := <-g.connectionChannel:
 			uid = uid + 1
-			// g.entities[1] = Entity{uid: uid, x: 0.0, y: 0.0, session: s}
-			s.SendMessage([]byte(fmt.Sprintf("{\"command\": \"DISCOVER\",\"uid\": %d}", uid)))
+			g.sessions[uid] = Session{session: s}
+			s.SendMessage([]byte(fmt.Sprintf("{\"type\": \"OFFER\",\"uid\": %d}", uid)))
 
 		case d := <-g.dataChannel:
-			fmt.Printf("Processed client data: %s\n", d)
+			command := Command{}
+			json.Unmarshal(d, &command)
+			switch command.Type {
+			case "REQUEST":
+				respons := Req{}
+				json.Unmarshal(d, &respons)
+				session := g.sessions[int8(respons.Id)].session
+				g.entities[1] = Entity{uid: int8(respons.Id), x: 0.0, y: 0.0, session: session}
+				session.SendMessage([]byte(fmt.Sprintf("{\"type\": \"JOIN\"}")))
+
+			case "DATA":
+			}
 
 		case <-g.Quit:
 			t.Stop()
