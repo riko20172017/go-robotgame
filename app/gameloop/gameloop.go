@@ -5,6 +5,7 @@ package gameloop
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"runtime"
 	"time"
 
@@ -68,8 +69,6 @@ func (g *GameLoop) startLoop() {
 	var delta float64
 	start := time.Now().UnixNano()
 
-	i := 0
-
 	for {
 		select {
 		case <-t.C:
@@ -78,10 +77,10 @@ func (g *GameLoop) startLoop() {
 			delta = float64(now-start) / 1000000000
 			start = now
 			g.onUpdate(delta)
-			for _, s := range g.entities {
-				s.session.SendMessage([]byte(fmt.Sprintf("%2d", i)))
-				// println(len(g.entities))
-
+			for _, e := range g.entities {
+				e.session.SendMessage(
+					[]byte(fmt.Sprintf(
+						"{\"type\":\"DATA\",\"x\":%f,\"y\":%f}", e.x, e.y)))
 			}
 		case s := <-g.connectionChannel:
 			uid = uid + 1
@@ -90,8 +89,16 @@ func (g *GameLoop) startLoop() {
 
 		case d := <-g.dataChannel:
 			command := Command{}
-			json.Unmarshal(d, &command)
+			err := json.Unmarshal(d, &command)
+			if err != nil {
+				// Используем Fatal только для примера,
+				// нельзя использовать в реальных приложениях
+				log.Fatalln("unmarshal ", err.Error())
+			}
+			fmt.Printf("%s", string(d))
 			switch command.Type {
+			case "DATA":
+				println(1)
 			case "REQUEST":
 				respons := Req{}
 				json.Unmarshal(d, &respons)
@@ -99,7 +106,6 @@ func (g *GameLoop) startLoop() {
 				g.entities[1] = Entity{uid: int8(respons.Id), x: 0.0, y: 0.0, session: session}
 				session.SendMessage([]byte(fmt.Sprintf("{\"type\": \"JOIN\"}")))
 
-			case "DATA":
 			}
 
 		case <-g.Quit:
