@@ -30,6 +30,27 @@ type Entity struct {
 	session *webtransport.Session
 }
 
+type Data struct {
+	Uid   int8    `json:"uid"`
+	Tik   int     `json:"tik"`
+	Delta float64 `json:"delta"`
+	Keys  Keys    `json:"keys"`
+}
+
+type Keys struct {
+	Space int   `json:"space"`
+	Left  int   `json:"left"`
+	Up    int   `json:"up"`
+	Right int   `json:"right"`
+	Down  int   `json:"down"`
+	Mouse Mouse `json:"mouse"`
+}
+
+type Mouse struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 type Session struct {
 	session *webtransport.Session
 }
@@ -95,10 +116,20 @@ func (g *GameLoop) startLoop() {
 				// нельзя использовать в реальных приложениях
 				log.Fatalln("unmarshal ", err.Error())
 			}
-			fmt.Printf("%s", string(d))
+			// fmt.Printf("%s", string(d))
+
 			switch command.Type {
 			case "DATA":
-				println(1)
+				data := Data{}
+				err := json.Unmarshal(d, &data)
+				if err != nil {
+					// Используем Fatal только для примера,
+					// нельзя использовать в реальных приложениях
+					log.Fatalln("unmarshal ", err.Error())
+				}
+				// fmt.Printf("%+v", g.entities[int8(data.Uid)])
+				// g.entities[data.Uid].x = data.
+
 			case "REQUEST":
 				respons := Req{}
 				json.Unmarshal(d, &respons)
