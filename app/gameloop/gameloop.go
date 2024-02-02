@@ -21,6 +21,7 @@ type GameLoop struct {
 	dataChannel       chan []byte
 	entities          map[int8]Entity
 	sessions          map[int8]Session
+	messages          []Data
 }
 
 type Entity struct {
@@ -64,6 +65,9 @@ type Req struct {
 	Id   int    `json:"id"`
 }
 
+type Messages struct {
+}
+
 // Create new game loop
 func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, dataChannel chan []byte, onUpdate func(float64)) *GameLoop {
 	return &GameLoop{
@@ -74,6 +78,7 @@ func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, d
 		dataChannel:       dataChannel,
 		entities:          make(map[int8]Entity),
 		sessions:          make(map[int8]Session),
+		messages:          make([]Data, 100),
 	}
 }
 
@@ -116,7 +121,6 @@ func (g *GameLoop) startLoop() {
 				// нельзя использовать в реальных приложениях
 				log.Fatalln("unmarshal ", err.Error())
 			}
-			// fmt.Printf("%s", string(d))
 
 			switch command.Type {
 			case "DATA":
@@ -128,7 +132,8 @@ func (g *GameLoop) startLoop() {
 					log.Fatalln("unmarshal ", err.Error())
 				}
 				// fmt.Printf("%+v", g.entities[int8(data.Uid)])
-				// g.entities[data.Uid].x = data.
+				println(len(g.messages))
+				g.messages = append(g.messages, data)
 
 			case "REQUEST":
 				respons := Req{}
