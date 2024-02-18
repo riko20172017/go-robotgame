@@ -14,7 +14,7 @@ import (
 
 // GameLoop implements a simple game loop.
 type GameLoop struct {
-	onUpdate          func(float64) // update function called by loop
+	onUpdate          func(float32) // update function called by loop
 	tickRate          time.Duration // tick interval
 	Quit              chan bool
 	connectionChannel chan *webtransport.Session // channel used for exiting the loop
@@ -34,7 +34,7 @@ type Entity struct {
 type Data struct {
 	Uid   int8    `json:"uid"`
 	Tik   int     `json:"tik"`
-	Delta float64 `json:"delta"`
+	deltaTime float64 `json:"deltaTime"`
 	Keys  Keys    `json:"keys"`
 }
 
@@ -69,7 +69,7 @@ type Messages struct {
 }
 
 // Create new game loop
-func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, dataChannel chan []byte, onUpdate func(float64)) *GameLoop {
+func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, dataChannel chan []byte, onUpdate func(float32)) *GameLoop {
 	return &GameLoop{
 		onUpdate:          onUpdate,
 		tickRate:          tickRate,
@@ -78,7 +78,7 @@ func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, d
 		dataChannel:       dataChannel,
 		entities:          make(map[int8]Entity),
 		sessions:          make(map[int8]Session),
-		messages:          make([]Data, 100),
+		messages:          make([]Data, 0),
 	}
 }
 
@@ -92,23 +92,46 @@ func (g *GameLoop) startLoop() {
 
 	var uid int8 = 0
 	var now int64
-	var delta float64
+	var deltaTime float32
 	start := time.Now().UnixNano()
 
 	for {
 		select {
 		case <-t.C:
-			// Calculate delta T in fractions of seconds.
-			now = time.Now().UnixNano()
-			delta = float64(now-start) / 1000000000
+			// Calculate deltaTime T in fractions of seconds.
+			now = time.Now().UnixNano() 
+			deltaTime = float32(now-start) / 1000000000
 			start = now
-			g.onUpdate(delta)
-			for _, e := range g.entities {
-				e.session.SendMessage(
+			g.onUpdate(deltaTime)  
+			// fmt.Printf("%+v\n", g.messages)
+			for _, m := range g.messages {
+			// fmt.Printf("%+v", m)
+			// print(len(g.messages))
+			
+				index := m.Uid
+				entity := g.entities[index]
+				deltaMove := deltaTime * 200
+
+				if (m.Keys.Down == 1) {
+					entity.y += deltaMove;
+				}
+				if (m.Keys.Up == 1) {
+					entity.y -= deltaMove;
+				}
+				if (m.Keys.Left == 1) {
+					entity.x -= deltaMove;
+				}
+				if (m.Keys.Right == 1) {
+					entity.x += deltaMove;
+				}
+
+				g.entities[index] = entity
+				g.entities[index].session.SendMessage(
 					[]byte(fmt.Sprintf(
-						"{\"type\":\"DATA\",\"x\":%f,\"y\":%f}", e.x, e.y)))
+						"{\"type\":\"DATA\", \"states\": [{\"uid\":%d,\"x\":%f,\"y\":%f}]}", entity.uid, entity.x, entity.y)))
 			}
-		case s := <-g.connectionChannel:
+			g.messages = g.messages[:0]
+		case s := <-g.connectionChannel: 
 			uid = uid + 1
 			g.sessions[uid] = Session{session: s}
 			s.SendMessage([]byte(fmt.Sprintf("{\"type\": \"OFFER\",\"uid\": %d}", uid)))
@@ -132,16 +155,16 @@ func (g *GameLoop) startLoop() {
 					log.Fatalln("unmarshal ", err.Error())
 				}
 				// fmt.Printf("%+v", g.entities[int8(data.Uid)])
-				println(len(g.messages))
 				g.messages = append(g.messages, data)
 
 			case "REQUEST":
 				respons := Req{}
 				json.Unmarshal(d, &respons)
 				session := g.sessions[int8(respons.Id)].session
-				g.entities[1] = Entity{uid: int8(respons.Id), x: 0.0, y: 0.0, session: session}
+				uid := int8(respons.Id)
+				g.entities[uid] = Entity{uid: uid, x: 0.0, y: 0.0, session: session}
 				session.SendMessage([]byte(fmt.Sprintf("{\"type\": \"JOIN\"}")))
-
+				// fmt.Printf("%+v", g.messages)
 			}
 
 		case <-g.Quit:

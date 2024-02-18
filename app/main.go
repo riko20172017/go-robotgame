@@ -52,7 +52,7 @@ func main() {
 		}()
 	})
 
-	g := gameloop.New(time.Second/30, connectionChannel, dataChannel, func(delta float64) {
+	g := gameloop.New(time.Second/30, connectionChannel, dataChannel, func(delta float32) {
 		// log.Println(delta)
 	})
 
