@@ -32,10 +32,21 @@ type Entity struct {
 }
 
 type Data struct {
-	Uid   int8    `json:"uid"`
-	Tik   int     `json:"tik"`
+	Uid       int8    `json:"uid"`
+	Tik       int     `json:"tik"`
 	deltaTime float64 `json:"deltaTime"`
-	Keys  Keys    `json:"keys"`
+	Keys      Keys    `json:"keys"`
+}
+
+type State struct {
+	Uid int8    `json:"uid"`
+	X   float32 `json:"x"`
+	Y   float32 `json:"y"`
+}
+
+type Snapshot struct {
+	Mtype  string  `json:"mtype"`
+	States []State `json:"states"`
 }
 
 type Keys struct {
@@ -69,9 +80,8 @@ type Messages struct {
 }
 
 // Create new game loop
-func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, dataChannel chan []byte, onUpdate func(float32)) *GameLoop {
+func New(tickRate time.Duration, connectionChannel chan *webtransport.Session, dataChannel chan []byte) *GameLoop {
 	return &GameLoop{
-		onUpdate:          onUpdate,
 		tickRate:          tickRate,
 		Quit:              make(chan bool),
 		connectionChannel: connectionChannel,
@@ -99,42 +109,20 @@ func (g *GameLoop) startLoop() {
 		select {
 		case <-t.C:
 			// Calculate deltaTime T in fractions of seconds.
-			now = time.Now().UnixNano() 
+			now = time.Now().UnixNano()
 			deltaTime = float32(now-start) / 1000000000
 			start = now
-			g.onUpdate(deltaTime)  
 			// fmt.Printf("%+v\n", g.messages)
-			for _, m := range g.messages {
-			// fmt.Printf("%+v", m)
-			// print(len(g.messages))
-			
-				index := m.Uid
-				entity := g.entities[index]
-				deltaMove := deltaTime * 200
+			g.handleInput(deltaTime)
+			g.updateEntities(deltaTime)
+			g.checkCollisions(deltaTime)
+			g.sendState(deltaTime)
 
-				if (m.Keys.Down == 1) {
-					entity.y += deltaMove;
-				}
-				if (m.Keys.Up == 1) {
-					entity.y -= deltaMove;
-				}
-				if (m.Keys.Left == 1) {
-					entity.x -= deltaMove;
-				}
-				if (m.Keys.Right == 1) {
-					entity.x += deltaMove;
-				}
-
-				g.entities[index] = entity
-				g.entities[index].session.SendMessage(
-					[]byte(fmt.Sprintf(
-						"{\"type\":\"DATA\", \"states\": [{\"uid\":%d,\"x\":%f,\"y\":%f}]}", entity.uid, entity.x, entity.y)))
-			}
-			g.messages = g.messages[:0]
-		case s := <-g.connectionChannel: 
+		case s := <-g.connectionChannel:
 			uid = uid + 1
 			g.sessions[uid] = Session{session: s}
-			s.SendMessage([]byte(fmt.Sprintf("{\"type\": \"OFFER\",\"uid\": %d}", uid)))
+			g.entities[uid] = Entity{uid: uid, x: 0.0, y: 0.0, session: s}
+			s.SendMessage([]byte(fmt.Sprintf("{\"mtype\": \"OFFER\",\"uid\": %d}", uid)))
 
 		case d := <-g.dataChannel:
 			command := Command{}
@@ -156,15 +144,6 @@ func (g *GameLoop) startLoop() {
 				}
 				// fmt.Printf("%+v", g.entities[int8(data.Uid)])
 				g.messages = append(g.messages, data)
-
-			case "REQUEST":
-				respons := Req{}
-				json.Unmarshal(d, &respons)
-				session := g.sessions[int8(respons.Id)].session
-				uid := int8(respons.Id)
-				g.entities[uid] = Entity{uid: uid, x: 0.0, y: 0.0, session: session}
-				session.SendMessage([]byte(fmt.Sprintf("{\"type\": \"JOIN\"}")))
-				// fmt.Printf("%+v", g.messages)
 			}
 
 		case <-g.Quit:
@@ -187,4 +166,62 @@ func (g *GameLoop) Stop() {
 func (g *GameLoop) Restart() {
 	g.Stop()
 	g.Start()
+}
+
+func (g *GameLoop) handleInput(deltaTime float32) {
+	for _, m := range g.messages {
+		index := m.Uid
+		entity := g.entities[index]
+		deltaMove := deltaTime * 200
+
+		if m.Keys.Down == 1 {
+			entity.y += deltaMove
+		}
+		if m.Keys.Up == 1 {
+			entity.y -= deltaMove
+		}
+		if m.Keys.Left == 1 {
+			entity.x -= deltaMove
+		}
+		if m.Keys.Right == 1 {
+			entity.x += deltaMove
+		}
+
+		g.entities[index] = entity
+		g.messages = g.messages[:0]
+	}
+}
+
+func (g *GameLoop) updateEntities(deltaTime float32) {
+
+}
+
+func (g *GameLoop) checkCollisions(deltaTime float32) {
+
+}
+
+func (g *GameLoop) sendState(deltaTime float32) {
+	var States []State
+	for _, e := range g.entities {
+		States = append(States, State{e.uid, e.x, e.y})
+	}
+
+	var snapShot Snapshot = Snapshot{"DATA", States}
+
+	snapShotJson, err := json.Marshal(snapShot)
+	if err != nil {
+		// Используем Fatal только для примера,
+		// нельзя использовать в реальных приложениях
+		log.Fatalln("marshal snapshot", err.Error())
+	}
+
+	// fmt.Printf("%+v\n", snapShotJson)
+
+	for _, e := range g.entities {
+		e.session.SendMessage([]byte(snapShotJson))
+	}
+
+	// snapShot = nil
+	snapShotJson = nil
+	States = nil
 }

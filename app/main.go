@@ -36,6 +36,7 @@ func main() {
 		fmt.Println("Accepted incoming WebTransport session")
 
 		go func() {
+			print("new Session")
 			for {
 				msg, err := session.ReceiveMessage(session.Context())
 				if err != nil {
@@ -52,9 +53,7 @@ func main() {
 		}()
 	})
 
-	g := gameloop.New(time.Second/30, connectionChannel, dataChannel, func(delta float32) {
-		// log.Println(delta)
-	})
+	g := gameloop.New(time.Second/30, connectionChannel, dataChannel)
 
 	g.Start()
 
