@@ -39,7 +39,10 @@
     });
 
     // Send some data on the streams we've created, wait, then send some more
-    // await datagramWriter.write(encoder.encode("Datagram"))
+    await datagramWriter.write(encoder.encode("Datagram 1"))
+    await datagramWriter.write(encoder.encode("Datagram 2"))
+    await datagramWriter.write(encoder.encode("Datagram 3"))
+    await datagramWriter.write(encoder.encode("Datagram 4"))
 
     // await Promise.delay(1000);
 
